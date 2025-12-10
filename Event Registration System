@@ -1,0 +1,54 @@
+// event-api/server.js
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+let events = [
+  { id: 1, name: 'Tech Conf', date: '2025-01-10' },
+  { id: 2, name: 'Hackathon', date: '2025-02-20' }
+];
+
+let registrations = []; // {id, eventId, name, email}
+let nextRegId = 1;
+
+// list events
+app.get('/api/events', (req, res) => {
+  res.json(events);
+});
+
+// event details
+app.get('/api/events/:id', (req, res) => {
+  const event = events.find(e => e.id === Number(req.params.id));
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  res.json(event);
+});
+
+// register
+app.post('/api/events/:id/register', (req, res) => {
+  const eventId = Number(req.params.id);
+  const event = events.find(e => e.id === eventId);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  const { name, email } = req.body;
+  if (!name || !email) return res.status(400).json({ error: 'name & email required' });
+
+  const reg = { id: nextRegId++, eventId, name, email };
+  registrations.push(reg);
+  res.status(201).json(reg);
+});
+
+// view my registrations
+app.get('/api/registrations', (req, res) => {
+  res.json(registrations);
+});
+
+// cancel
+app.delete('/api/registrations/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const index = registrations.findIndex(r => r.id === id);
+  if (index === -1) return res.status(404).json({ error: 'Registration not found' });
+  registrations.splice(index, 1);
+  res.json({ message: 'Cancelled' });
+});
+
+app.listen(3001, () => console.log('Event API on 3001'));
