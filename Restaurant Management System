@@ -1,0 +1,51 @@
+// restaurant-api/server.js
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+let menu = [
+  { id: 1, name: 'Pizza', price: 300 },
+  { id: 2, name: 'Burger', price: 150 }
+];
+
+let tables = [
+  { id: 1, seats: 4, available: true },
+  { id: 2, seats: 2, available: true }
+];
+
+let orders = []; // {id, tableId, items:[{menuId, qty}], status}
+let nextOrderId = 1;
+
+// view menu
+app.get('/api/menu', (req, res) => res.json(menu));
+
+// create order & reserve table
+app.post('/api/orders', (req, res) => {
+  const { tableId, items } = req.body;
+  const table = tables.find(t => t.id === tableId && t.available);
+  if (!table) return res.status(400).json({ error: 'Table not available' });
+  if (!items || !items.length) return res.status(400).json({ error: 'items required' });
+
+  table.available = false;
+  const order = { id: nextOrderId++, tableId, items, status: 'PLACED' };
+  orders.push(order);
+  res.status(201).json(order);
+});
+
+// update status & free table when completed
+app.patch('/api/orders/:id/status', (req, res) => {
+  const order = orders.find(o => o.id === Number(req.params.id));
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  const { status } = req.body;
+  order.status = status;
+  if (status === 'COMPLETED') {
+    const table = tables.find(t => t.id === order.tableId);
+    if (table) table.available = true;
+  }
+  res.json(order);
+});
+
+// list orders
+app.get('/api/orders', (req, res) => res.json(orders));
+
+app.listen(3002, () => console.log('Restaurant API on 3002'));
