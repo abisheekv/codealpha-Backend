@@ -1,0 +1,27 @@
+// url-shortener/server.js
+const express = require('express');
+const crypto = require('crypto');
+
+const app = express();
+app.use(express.json());
+
+const urlStore = {}; // shortCode -> longUrl
+
+// Create short URL
+app.post('/api/shorten', (req, res) => {
+  const { longUrl } = req.body;
+  if (!longUrl) return res.status(400).json({ error: 'longUrl required' });
+
+  const shortCode = crypto.randomBytes(3).toString('hex'); // 6 chars
+  urlStore[shortCode] = longUrl;
+  res.json({ shortUrl: `http://localhost:3000/${shortCode}`, shortCode, longUrl });
+});
+
+// Redirect
+app.get('/:code', (req, res) => {
+  const longUrl = urlStore[req.params.code];
+  if (!longUrl) return res.status(404).send('Not found');
+  res.redirect(longUrl);
+});
+
+app.listen(3000, () => console.log('URL Shortener running on 3000'));
