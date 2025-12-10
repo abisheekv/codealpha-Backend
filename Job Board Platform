@@ -1,0 +1,61 @@
+// job-board-api/server.js
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+let jobs = [];        // {id, title, company, location, description}
+let applications = []; // {id, jobId, name, email, resumeUrl, status}
+
+let nextJobId = 1;
+let nextAppId = 1;
+
+// post job
+app.post('/api/jobs', (req, res) => {
+  const { title, company, location, description } = req.body;
+  if (!title || !company) return res.status(400).json({ error: 'title & company required' });
+
+  const job = { id: nextJobId++, title, company, location, description };
+  jobs.push(job);
+  res.status(201).json(job);
+});
+
+// search jobs (simple filter by q)
+app.get('/api/jobs', (req, res) => {
+  const q = (req.query.q || '').toLowerCase();
+  const result = q
+    ? jobs.filter(j =>
+        j.title.toLowerCase().includes(q) ||
+        j.company.toLowerCase().includes(q) ||
+        (j.location || '').toLowerCase().includes(q)
+      )
+    : jobs;
+  res.json(result);
+});
+
+// apply for job
+app.post('/api/jobs/:id/apply', (req, res) => {
+  const jobId = Number(req.params.id);
+  const job = jobs.find(j => j.id === jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+
+  const { name, email, resumeUrl } = req.body;
+  if (!name || !email) return res.status(400).json({ error: 'name & email required' });
+
+  const appObj = { id: nextAppId++, jobId, name, email, resumeUrl, status: 'APPLIED' };
+  applications.push(appObj);
+  res.status(201).json(appObj);
+});
+
+// update application status
+app.patch('/api/applications/:id/status', (req, res) => {
+  const appObj = applications.find(a => a.id === Number(req.params.id));
+  if (!appObj) return res.status(404).json({ error: 'Application not found' });
+  const { status } = req.body;
+  appObj.status = status || appObj.status;
+  res.json(appObj);
+});
+
+// list applications
+app.get('/api/applications', (req, res) => res.json(applications));
+
+app.listen(3003, () => console.log('Job Board API on 3003'));
